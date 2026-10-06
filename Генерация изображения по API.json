@@ -1,0 +1,251 @@
+{
+  "name": "Генерация изображения по API",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        96
+      ],
+      "id": "54ed6b27-188d-4bc5-bef7-ab7c73daf23c",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -16,
+        96
+      ],
+      "id": "03a442b2-99c2-4ad0-ad01-e6ed6900eb0f",
+      "name": "Wait",
+      "webhookId": "962fdb47-1aff-40f6-8f42-868e87adefbd"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.kie.ai/api/v1/jobs/createTask",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"model\": \"google/nano-banana\",\n  \"input\": {\n    \"prompt\": \"Кот-космонавт в скафандре на фоне звёзд, цифровая живопись\",\n    \"output_format\": \"png\",\n    \"image_size\": \"1:1\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -208,
+        96
+      ],
+      "id": "85ecc875-0bda-45b8-8a23-04ebb85513d4",
+      "name": "HTTP Request Create Task",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "BjkIPKZll9dbWw0K",
+          "name": "Header Auth account 1084"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://api.kie.ai/api/v1/jobs/recordInfo",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "taskId",
+              "value": "={{ $('HTTP Request Create Task').item.json.data.taskId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        192,
+        96
+      ],
+      "id": "7be24fc9-007c-4987-baf1-33885783eb1d",
+      "name": "HTTP Request Get Task Details",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "BjkIPKZll9dbWw0K",
+          "name": "Header Auth account 1084"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b580a93f-b249-4ee9-aa31-15e209b5a3f8",
+              "leftValue": "={{ $json.data.state }}",
+              "rightValue": "success",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "f8259f29-fc55-4787-88d4-a7d535a9ff94",
+              "leftValue": "={{ $json.data.resultJson }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        368,
+        96
+      ],
+      "id": "860b37f2-4e29-4169-b741-24a3cfa35faa",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n    const result = JSON.parse(item.json.data.resultJson);\n\n    item.json.data.resultJson = result.resultUrls[0];\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        -48
+      ],
+      "id": "4b4419bc-ea79-4832-9129-d2cba03ba346",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.data.resultJson }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        784,
+        -48
+      ],
+      "id": "5fefb57b-4d2e-4902-9c54-10baac691ba3",
+      "name": "HTTP Request"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request Create Task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request Create Task": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request Get Task Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request Get Task Details": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "2298e5d7-8ba2-4e90-9147-f2026628e578",
+  "meta": {
+    "instanceId": "f4300700b5a89163b88ad6a908ff9e3076c705e8b03a3f40f03ff2f29f7e4289"
+  },
+  "nodeGroups": [],
+  "id": "qaVvRqoKUVQuVprk",
+  "tags": []
+}
